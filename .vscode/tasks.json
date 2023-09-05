@@ -1,0 +1,31 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "clean",
+            "type": "shell",
+            "command": "rm -rf ${workspaceFolder}/build && mkdir ${workspaceFolder}/build && rm -rf ${workspaceFolder}/wav && mkdir ${workspaceFolder}/wav",
+            "group": "build"
+        },
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "g++",
+            "args": [
+                "-g",
+                "${workspaceFolder}/test/test.c",
+                "${workspaceFolder}/src/*.c",
+                "${workspaceFolder}/src/soundtouch/*.cpp",
+                "-I${workspaceFolder}/include",
+                "-I${workspaceFolder}/src/soundtouch",
+                "-o",
+                "${workspaceFolder}/build/main"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "dependsOn": ["clean"]
+        }
+    ]
+}

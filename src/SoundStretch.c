@@ -128,7 +128,12 @@ void process(void *pSoundTouch, WavInFile *inFile, WavOutFile *outFile) {
         int num;
 
         // Read a chunk of samples from the input file
-        num = WavInFile_read(inFile, sampleBuffer, BUFF_SIZE);
+#ifdef SOUNDTOUCH_INTEGER_SAMPLES
+        num = WavInFile_readInt(inFile, sampleBuffer, BUFF_SIZE);
+#else
+        num = WavInFile_readFloat(inFile, sampleBuffer, BUFF_SIZE);
+#endif
+
         nSamples = num / (int)WavInFile_getNumChannels(inFile);
 
         // Feed the samples into SoundTouch processor
@@ -144,7 +149,12 @@ void process(void *pSoundTouch, WavInFile *inFile, WavOutFile *outFile) {
         //   outputs samples.
         do {
             nSamples = SoundTouch_receiveSamples(pSoundTouch, sampleBuffer, buffSizeSamples);
-            WavOutFile_write(outFile, sampleBuffer, nSamples * nChannels);
+#ifdef SOUNDTOUCH_INTEGER_SAMPLES
+            WavOutFile_writeInt(outFile, sampleBuffer, nSamples * nChannels);
+#else
+            WavOutFile_writeFloat(outFile, sampleBuffer, nSamples * nChannels);
+#endif
+
         } while (nSamples != 0);
     }
 
@@ -153,6 +163,10 @@ void process(void *pSoundTouch, WavInFile *inFile, WavOutFile *outFile) {
     SoundTouch_flush(pSoundTouch);
     do {
         nSamples = SoundTouch_receiveSamples(pSoundTouch, sampleBuffer, buffSizeSamples);
-        WavOutFile_write(outFile, sampleBuffer, nSamples * nChannels);
+#ifdef SOUNDTOUCH_INTEGER_SAMPLES
+        WavOutFile_writeInt(outFile, sampleBuffer, nSamples * nChannels);
+#else
+        WavOutFile_writeFloat(outFile, sampleBuffer, nSamples * nChannels);
+#endif
     } while (nSamples != 0);
 }

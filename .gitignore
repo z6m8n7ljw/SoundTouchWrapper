@@ -1,0 +1,5 @@
+# build
+build/
+
+# audio output
+wav/*.wav

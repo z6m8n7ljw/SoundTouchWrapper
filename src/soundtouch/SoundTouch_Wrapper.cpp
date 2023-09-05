@@ -35,14 +35,22 @@ void SoundTouch_free(void *stouch) {
     delete soundTouch;
 }
 
-void SoundTouch_putSamples(void *stouch, float *samples, unsigned int numSamples) {
+void SoundTouch_putSamples(void *stouch, void *samples, unsigned int numSamples) {
     SoundTouch *soundTouch = (SoundTouch *)stouch;
-    soundTouch->putSamples(samples, numSamples);
+#ifdef SOUNDTOUCH_INTEGER_SAMPLES
+    soundTouch->putSamples((SAMPLETYPE *)samples, numSamples);
+#else
+    soundTouch->putSamples((SAMPLETYPE *)samples, numSamples);
+#endif
 }
 
-unsigned int SoundTouch_receiveSamples(void *stouch, float *samples, unsigned int maxSamples) {
+unsigned int SoundTouch_receiveSamples(void *stouch, void *samples, unsigned int maxSamples) {
     SoundTouch *soundTouch = (SoundTouch *)stouch;
-    return soundTouch->receiveSamples(samples, maxSamples);
+#ifdef SOUNDTOUCH_INTEGER_SAMPLES
+    return soundTouch->receiveSamples((SAMPLETYPE *)samples, maxSamples);
+#else
+    return soundTouch->receiveSamples((SAMPLETYPE *)samples, maxSamples);
+#endif
 }
 
 void SoundTouch_flush(void *stouch) {

@@ -116,7 +116,9 @@ WavInFile *WavInFile_createWithFile(FILE *file);
 void WavInFile_destroy(WavInFile *wavFile);
 void WavInFile_rewind(WavInFile *wavFile);
 int WavInFile_checkCharTags(const WavInFile *wavFile);
-int WavInFile_read(WavInFile *wavFile, float *buffer, int maxElems);
+int WavInFile_read(WavInFile *inFile, unsigned char *buffer, int maxElems);
+int WavInFile_readInt(WavInFile *inFile, short *buffer, int maxElems);
+int WavInFile_readFloat(WavInFile *wavFile, float *buffer, int maxElems);
 int WavInFile_eof(const WavInFile *wavInFile);
 int WavInFile_readRIFFBlock(WavInFile *wavInFile);
 int WavInFile_readHeaderBlock(FILE *fptr, WavHeader *header);
@@ -143,6 +145,8 @@ void WavOutFile_destroy(WavOutFile *wavOutFile);
 void WavOutFile_fillInHeader(WavOutFile *wavOutFile, unsigned int sampleRate, unsigned int bits, unsigned int channels);
 void WavOutFile_finishHeader(WavOutFile *wavOutFile);
 void WavOutFile_writeHeader(WavOutFile *wavOutFile);
-void WavOutFile_write(WavOutFile *wavOutFile, const float *buffer, int numElems);
+void WavOutFile_write(WavOutFile *outFile, const unsigned char *buffer, int numElems);
+void WavOutFile_writeInt(WavOutFile *outFile, const short *buffer, int numElems);
+void WavOutFile_writeFloat(WavOutFile *wavOutFile, const float *buffer, int numElems);
 
 #endif

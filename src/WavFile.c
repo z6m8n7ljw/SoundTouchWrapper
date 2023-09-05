@@ -200,7 +200,87 @@ int WavInFile_checkCharTags(const WavInFile *inFile) {
     return 0;
 }
 
-int WavInFile_read(WavInFile *inFile, float *buffer, int maxElems) {
+int WavInFile_read(WavInFile *inFile, unsigned char *buffer, int maxElems) {
+    int numBytes;
+    uint afterDataRead;
+
+    // ensure it's 8 bit format
+    if (inFile->header.format.bits_per_sample != 8) {
+        ST_THROW_RT_ERROR("Error: WavInFile::read(char*, int) works only with 8bit samples.");
+    }
+    assert(sizeof(char) == 1);
+
+    numBytes = maxElems;
+    afterDataRead = inFile->dataRead + numBytes;
+    if (afterDataRead > inFile->header.data.data_len) {
+        // Don't read more samples than are marked available in header
+        numBytes = (int)inFile->header.data.data_len - (int)inFile->dataRead;
+        assert(numBytes >= 0);
+    }
+
+    assert(buffer);
+    numBytes = (int)fread(buffer, 1, numBytes, inFile->fptr);
+    inFile->dataRead += numBytes;
+
+    return numBytes;
+}
+
+int WavInFile_readInt(WavInFile *inFile, short *buffer, int maxElems) {
+    unsigned int afterDataRead;
+    int numBytes;
+    int numElems;
+
+    assert(buffer);
+    switch (inFile->header.format.bits_per_sample) {
+        case 8: {
+            // 8 bit format
+            unsigned char *temp = (unsigned char *)WavFileBase_getConvBuffer(inFile->base, maxElems);
+            int i;
+
+            numElems = WavInFile_read(inFile, temp, maxElems);
+            // convert from 8 to 16 bit
+            for (i = 0; i < numElems; i++) {
+                buffer[i] = (short)(((short)temp[i] - 128) * 256);
+            }
+            break;
+        }
+
+        case 16: {
+            // 16 bit format
+
+            assert(sizeof(short) == 2);
+
+            numBytes = maxElems * 2;
+            afterDataRead = inFile->dataRead + numBytes;
+            if (afterDataRead > inFile->header.data.data_len) {
+                // Don't read more samples than are marked available in header
+                numBytes = (int)inFile->header.data.data_len - (int)inFile->dataRead;
+                assert(numBytes >= 0);
+            }
+
+            numBytes = (int)fread(buffer, 1, numBytes, inFile->fptr);
+            inFile->dataRead += numBytes;
+            numElems = numBytes / 2;
+
+            // 16bit samples, swap byte order if necessary
+            _swap16Buffer((short *)buffer, numElems);
+            break;
+        }
+
+        default: {
+            char ss[256];
+            snprintf(ss, sizeof(ss),
+                     "\nOnly 8/16 bit sample WAV files supported in integer compilation. Can't open WAV file with %d "
+                     "bit sample format. ",
+                     (int)inFile->header.format.bits_per_sample);
+            ST_THROW_RT_ERROR(ss);
+        }
+    };
+
+    return numElems;
+}
+
+int WavInFile_readFloat(WavInFile *inFile, float *buffer, int maxElems) {
     unsigned int afterDataRead;
     int numBytes;
     int numElems;
@@ -593,6 +673,69 @@ void WavOutFile_writeHeader(WavOutFile *outFile) {
     fseek(outFile->fptr, 0, SEEK_END);
 }
 
+void WavOutFile_write(WavOutFile *outFile, const unsigned char *buffer, int numElems) {
+    int res;
+
+    if (outFile->header.format.bits_per_sample != 8) {
+        ST_THROW_RT_ERROR("Error: WavOutFile::write(const char*, int) accepts only 8bit samples.");
+    }
+    assert(sizeof(char) == 1);
+
+    res = (int)fwrite(buffer, 1, numElems, outFile->fptr);
+    if (res != numElems) {
+        ST_THROW_RT_ERROR("Error while writing to a wav file.");
+    }
+
+    outFile->bytesWritten += numElems;
+}
+
+void WavOutFile_writeInt(WavOutFile *outFile, const short *buffer, int numElems) {
+    int res;
+
+    // 16 bit samples
+    if (numElems < 1) return;  // nothing to do
+
+    switch (outFile->header.format.bits_per_sample) {
+        case 8: {
+            int i;
+            unsigned char *temp = (unsigned char *)WavFileBase_getConvBuffer(outFile->base, numElems);
+            // convert from 16bit format to 8bit format
+            for (i = 0; i < numElems; i++) {
+                temp[i] = (unsigned char)(buffer[i] / 256 + 128);
+            }
+            // write in 8bit format
+            WavOutFile_write(outFile, temp, numElems);
+            break;
+        }
+
+        case 16: {
+            // 16bit format
+
+            // use temp buffer to swap byte order if necessary
+            short *pTemp = (short *)WavFileBase_getConvBuffer(outFile->base, numElems * sizeof(short));
+            memcpy(pTemp, buffer, numElems * 2);
+            _swap16Buffer(pTemp, numElems);
+
+            res = (int)fwrite(pTemp, 2, numElems, outFile->fptr);
+
+            if (res != numElems) {
+                ST_THROW_RT_ERROR("Error while writing to a wav file.");
+            }
+            outFile->bytesWritten += 2 * numElems;
+            break;
+        }
+
+        default: {
+            char ss[256];
+            snprintf(ss, sizeof(ss),
+                     "\nOnly 8/16 bit sample WAV files supported in integer compilation. Can't open WAV file with %d "
+                     "bit sample format. ",
+                     (int)outFile->header.format.bits_per_sample);
+            ST_THROW_RT_ERROR(ss);
+        }
+    }
+}
+
 static int saturate(float fvalue, float minval, float maxval) {
     if (fvalue > maxval) {
         fvalue = maxval;
@@ -602,7 +745,7 @@ static int saturate(float fvalue, float minval, float maxval) {
     return (int)fvalue;
 }
 
-void WavOutFile_write(WavOutFile *outFile, const float *buffer, int numElems) {
+void WavOutFile_writeFloat(WavOutFile *outFile, const float *buffer, int numElems) {
     int numBytes;
     int bytesPerSample;
 
